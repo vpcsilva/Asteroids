@@ -130,13 +130,13 @@ public abstract class Entity {
 	public void update(Game game) {
 		position.add(velocity);
 		if(position.x < 0.0f) {
-			position.x += WorldPanel.WORLD_SIZE;
+			position.x += WorldPanel.WORLD_WIDTH;
 		}
 		if(position.y < 0.0f) {
-			position.y += WorldPanel.WORLD_SIZE;
+			position.y += WorldPanel.WORLD_HEIHGT;
 		}
-		position.x %= WorldPanel.WORLD_SIZE;
-		position.y %= WorldPanel.WORLD_SIZE;
+		position.x %= WorldPanel.WORLD_WIDTH;
+		position.y %= WorldPanel.WORLD_HEIHGT;
 	}
 	
 	/**

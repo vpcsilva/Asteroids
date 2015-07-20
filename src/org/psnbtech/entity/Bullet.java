@@ -49,8 +49,8 @@ public class Bullet extends Entity {
 	}
 
 	@Override
-	public void handleCollision(Game game, Entity other) {
-		if(other.getClass() != Player.class) {
+	public synchronized void handleCollision(Game game, Entity other) {
+		if(other.getClass() != Ship.class) {
 			flagForRemoval();
 		}
 	}

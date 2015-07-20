@@ -6,6 +6,7 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.Toolkit;
 import java.awt.geom.AffineTransform;
 import java.util.Iterator;
 
@@ -29,7 +30,10 @@ public class WorldPanel extends JPanel {
 	/**
 	 * The size of the world in pixels.
 	 */
-	public static final int WORLD_SIZE = 550;
+	public static final int WORLD_SIZE = Toolkit.getDefaultToolkit().getScreenSize().height;
+	
+	public static final int WORLD_HEIHGT = Toolkit.getDefaultToolkit().getScreenSize().height;
+	public static final int WORLD_WIDTH = Toolkit.getDefaultToolkit().getScreenSize().width;
 	
 	/**
 	 * The font used for the large text.
@@ -54,7 +58,7 @@ public class WorldPanel extends JPanel {
 		this.game = game;
 
 		//Set the window's size and background color.
-		setPreferredSize(new Dimension(WORLD_SIZE, WORLD_SIZE));
+		setPreferredSize(new Dimension(WORLD_WIDTH, WORLD_HEIHGT));
 		setBackground(Color.BLACK);
 	}
 	
@@ -107,10 +111,10 @@ public class WorldPanel extends JPanel {
 				 * 
 				 */
 				double radius = entity.getCollisionRadius();
-				double x = (pos.x < radius) ? pos.x + WORLD_SIZE
-						: (pos.x > WORLD_SIZE - radius) ? pos.x - WORLD_SIZE : pos.x;
-				double y = (pos.y < radius) ? pos.y + WORLD_SIZE
-						: (pos.y > WORLD_SIZE - radius) ? pos.y - WORLD_SIZE : pos.y;
+				double x = (pos.x < radius) ? pos.x + WORLD_WIDTH
+						: (pos.x > WORLD_WIDTH - radius) ? pos.x - WORLD_WIDTH : pos.x;
+				double y = (pos.y < radius) ? pos.y + WORLD_HEIHGT
+						: (pos.y > WORLD_HEIHGT - radius) ? pos.y - WORLD_HEIHGT: pos.y;
 				
 				//Draw the entity at it's wrapped position, and reset the transformation.
 				if(x != pos.x || y != pos.y) {
@@ -122,7 +126,8 @@ public class WorldPanel extends JPanel {
 		
 		//Draw the score string in the top left corner if we are still playing.
 		if(!game.isGameOver()) {
-			g.drawString("Score: " + game.getScore(), 10, 15);
+			g.drawString("Score: " + game.getScore(), 10, 35);
+			g.drawString("Threads: "+game.getNumberOfThreads(), 100, 35);
 		}
 		
 		//Draw some overlay text depending on the game state.
@@ -130,13 +135,13 @@ public class WorldPanel extends JPanel {
 			drawTextCentered("Game Over", TITLE_FONT, g2d, -25);
 			drawTextCentered("Final Score: " + game.getScore(), SUBTITLE_FONT, g2d, 10);
 		} else if(game.isPaused()) {
-			drawTextCentered("Paused", TITLE_FONT, g2d, -25);
+			drawTextCentered("\"q\" to exit or \"p\" to return", TITLE_FONT, g2d, -25);
 		} else if(game.isShowingLevel()) {
 			drawTextCentered("Level: " + game.getLevel(), TITLE_FONT, g2d, -25);
 		}
 		
 		//Draw a ship for each life the player has remaining.
-		g2d.translate(15, 30);
+		g2d.translate(15, 50);
 		g2d.scale(0.85, 0.85);
 		for(int i = 0; i < game.getLives(); i++) {
 			g2d.drawLine(-8, 10, 0, -10);
@@ -155,7 +160,7 @@ public class WorldPanel extends JPanel {
 	 */
 	private void drawTextCentered(String text, Font font, Graphics2D g, int y) {
 		g.setFont(font);
-		g.drawString(text, WORLD_SIZE / 2 - g.getFontMetrics().stringWidth(text) / 2, WORLD_SIZE / 2 + y);
+		g.drawString(text, WORLD_WIDTH / 2 - g.getFontMetrics().stringWidth(text) / 2, WORLD_HEIHGT / 2 + y);
 	}
 	
 	/**

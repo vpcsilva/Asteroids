@@ -1,19 +1,25 @@
 package org.psnbtech;
 
 import java.awt.BorderLayout;
+import java.awt.Window;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.WindowEvent;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.swing.JFrame;
 
 import org.psnbtech.entity.Asteroid;
 import org.psnbtech.entity.Entity;
-import org.psnbtech.entity.Player;
+import org.psnbtech.entity.Ship;
 import org.psnbtech.util.Clock;
 
 /**
@@ -64,6 +70,11 @@ public class Game extends JFrame {
 	 * The value that {@code resetCooldown} is set to when the player loses.
 	 */
 	private static final int RESET_COOLDOWN_LIMIT = 120;
+	
+	/**
+	 * The number of threads that will be used in the game
+	 */
+	private static final int THREADS_NUMBER = Runtime.getRuntime().availableProcessors();
 		
 	/**
 	 * The WorldPanel instance.
@@ -93,7 +104,7 @@ public class Game extends JFrame {
 	/**
 	 * The Player instance.
 	 */
-	private Player player;
+	private Ship player;
 	
 	/**
 	 * <p>The death cooldown timer is responsible for spreading a Player's death
@@ -151,6 +162,11 @@ public class Game extends JFrame {
 	 * Whether or not the player has pressed anything to restart the game.
 	 */
 	private boolean restartGame;
+	
+	/**
+	 * Pool of threads
+	 */
+	ExecutorService threadPool;
 	
 	/**
 	 * Create a new instance of the Game.
@@ -221,10 +237,17 @@ public class Game extends JFrame {
 					
 				//Indicate that we want to pause the game.
 				case KeyEvent.VK_P:
+				case KeyEvent.VK_ESCAPE:
 					if(!checkForRestart()) {
 						logicTimer.setPaused(!logicTimer.isPaused());
 					}
 					break;
+					
+				case KeyEvent.VK_Q:
+					if( logicTimer.isPaused() ) {
+						dispatchEvent( new WindowEvent(Game.this, WindowEvent.WINDOW_CLOSING));
+					}
+					
 					
 				//Handle all other key presses.
 				default:
@@ -267,6 +290,8 @@ public class Game extends JFrame {
 		//Resize the window to the correct size, position it in the center of the screen, and display it.
 		pack();
 		setLocationRelativeTo(null);
+//		setExtendedState(JFrame.MAXIMIZED_BOTH);
+		enableOSXFullscreen(this);
 		setVisible(true);
 	}
 	
@@ -290,7 +315,8 @@ public class Game extends JFrame {
 		this.random = new Random();
 		this.entities = new LinkedList<Entity>();
 		this.pendingEntities = new ArrayList<>();
-		this.player = new Player();
+		this.player = new Ship();
+		this.threadPool = Executors.newFixedThreadPool(THREADS_NUMBER);
 		
 		//Set the variables to their default values.
 		resetGame();
@@ -381,7 +407,7 @@ public class Game extends JFrame {
 			player.setFiringEnabled(true);
 			
 			//Add the asteroids to the world.
-			for(int i = 0; i < level + 2; i++) {
+			for(int i = 0; i < Math.pow(level, 2); i++) {
 				registerEntity(new Asteroid(random));
 			}
 		}
@@ -415,8 +441,17 @@ public class Game extends JFrame {
 		if(showLevelCooldown == 0) {
 			
 			//Iterate through the Entities and update their states.
+			ArrayList<Callable<Integer>> tasks  = new ArrayList<>();
+			
 			for(Entity entity : entities) {
-				entity.update(this);
+				ConcurrentUpdater concurrentUpdater = new ConcurrentUpdater(this, entity);
+				tasks.add(concurrentUpdater);
+			}
+			// Execute all threads and wait to all finish
+			try {
+				this.threadPool.invokeAll(tasks);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
 			}
 			
 			/*
@@ -430,15 +465,29 @@ public class Game extends JFrame {
 			 * which allows us to make changes to an entity without it interfering
 			 * with other collision results.
 			 */
+			
+			tasks = new ArrayList<>();
+			
 			for(int i = 0; i < entities.size(); i++) {
 				Entity a = entities.get(i);
 				for(int j = i + 1; j < entities.size(); j++) {
 					Entity b = entities.get(j);
+					
 					if(i != j && a.checkCollision(b) && ((a != player && b != player) || deathCooldown <= INVULN_COOLDOWN_LIMIT)) {
-						a.handleCollision(this, b);
-						b.handleCollision(this, a);
+						ConcurrentHandleColision checkColision1 = new ConcurrentHandleColision(this, a, b);
+						ConcurrentHandleColision checkColision2 = new ConcurrentHandleColision(this, b, a);
+						
+						tasks.add(checkColision1);
+						tasks.add(checkColision2);
 					}
+					
 				}
+				
+			}
+			try {
+				this.threadPool.invokeAll(tasks);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
 			}
 			
 			//Loop through and remove "dead" entities.
@@ -485,6 +534,35 @@ public class Game extends JFrame {
 		}
 		return true;
 	}
+	
+	@SuppressWarnings({"unchecked", "rawtypes"})
+    public static void enableOSXFullscreen(Window window) {
+        try {
+            Class util = Class.forName("com.apple.eawt.FullScreenUtilities");
+            Class params[] = new Class[]{Window.class, Boolean.TYPE};
+            Method method = util.getMethod("setWindowCanFullScreen", params);
+            method.invoke(util, window, true);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+	
+	@SuppressWarnings({"unchecked", "rawtypes"})
+    public static void requestToggleFullScreen(Window window)
+    {
+        try {
+            Class appClass = Class.forName("com.apple.eawt.Application");
+            Class params[] = new Class[]{};
+ 
+            Method getApplication = appClass.getMethod("getApplication", params);
+            Object application = getApplication.invoke(appClass);
+            Method requestToggleFulLScreen = application.getClass().getMethod("requestToggleFullScreen", Window.class);
+ 
+            requestToggleFulLScreen.invoke(application, window);
+        } catch (Exception e) {
+            System.out.println("An exception occurred while trying to toggle full screen mode");
+        }
+    }
 	
 	/**
 	 * Updates the game state to reflect a player death.
@@ -614,8 +692,16 @@ public class Game extends JFrame {
 	 * Gets the Player instance.
 	 * @return
 	 */
-	public Player getPlayer() {
+	public Ship getPlayer() {
 		return player;
+	}
+	
+	/**
+	 * Get the number of threads used
+	 * @return The number of threads
+	 */
+	public int getNumberOfThreads() {
+		return new Integer(THREADS_NUMBER).intValue();
 	}
 	
 	/**
@@ -624,6 +710,7 @@ public class Game extends JFrame {
 	 */
 	public static void main(String[] args) {
 		Game game = new Game();
+		Game.requestToggleFullScreen(game);
 		game.startGame();
 	}
 

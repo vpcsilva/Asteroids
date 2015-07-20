@@ -9,7 +9,7 @@ import org.psnbtech.Game;
 import org.psnbtech.WorldPanel;
 import org.psnbtech.util.Vector2;
 
-public class Player extends Entity {
+public class Ship extends Entity {
 	
 	private static final double DEFAULT_ROTATION = -Math.PI / 2.0;
 	
@@ -107,8 +107,8 @@ public class Player extends Entity {
 	/**
 	 * Initializes a new Player instance.
 	 */
-	public Player() {
-		super(new Vector2(WorldPanel.WORLD_SIZE / 2.0, WorldPanel.WORLD_SIZE / 2.0), new Vector2(0.0, 0.0), 10.0, 0);
+	public Ship() {
+		super(new Vector2(WorldPanel.WORLD_WIDTH / 2.0, WorldPanel.WORLD_HEIHGT / 2.0), new Vector2(0.0, 0.0), 10.0, 0);
 		this.bullets = new ArrayList<>();
 		this.rotation = DEFAULT_ROTATION;
 		this.thrustPressed = false;
@@ -167,7 +167,7 @@ public class Player extends Entity {
 	 */
 	public void reset() {
 		this.rotation = DEFAULT_ROTATION;
-		position.set(WorldPanel.WORLD_SIZE / 2.0, WorldPanel.WORLD_SIZE / 2.0);
+		position.set(WorldPanel.WORLD_WIDTH / 2.0, WorldPanel.WORLD_HEIHGT / 2.0);
 		velocity.set(0.0, 0.0);
 		bullets.clear();
 	}
@@ -282,7 +282,7 @@ public class Player extends Entity {
 	}
 	
 	@Override
-	public void handleCollision(Game game, Entity other) {
+	public synchronized void handleCollision(Game game, Entity other) {
 		//Kill the player if it collides with an Asteroid.
 		if(other.getClass() == Asteroid.class) {
 			game.killPlayer();
